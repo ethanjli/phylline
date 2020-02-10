@@ -229,11 +229,13 @@ class PipelineBottomCoupler(object):
         self.pipeline_two = pipeline_two
         self.is_manual_one = isinstance(self.pipeline_one, ManualPipeline)
         self.is_manual_two = isinstance(self.pipeline_two, ManualPipeline)
-        if isinstance(self.pipeline_one, AutomaticPipeline):
+        if hasattr(self.pipeline_one, 'after_write'):
             self.pipeline_one.after_write = self._write_one
+        if hasattr(self.pipeline_one, 'after_send'):
             self.pipeline_one.after_send = self._send_one
-        if isinstance(self.pipeline_two, AutomaticPipeline):
+        if hasattr(self.pipeline_two, 'after_write'):
             self.pipeline_two.after_write = self._write_two
+        if hasattr(self.pipeline_two, 'after_send'):
             self.pipeline_two.after_send = self._send_two
 
     def __repr__(self):
