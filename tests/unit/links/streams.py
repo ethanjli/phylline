@@ -16,7 +16,7 @@ HIGHER_STREAM = ''.join(HIGHER_EVENTS).encode('utf-8')
 
 def test_stream_link():
     """Exercise StreamLink's interface."""
-    # print('Testing Stream Link:')
+    print('Testing Stream Link:')
     stream_link = StreamLink()
     assert repr(stream_link) == '⇌~ StreamLink ~⇌'
     for buffer in LOWER_BUFFERS:

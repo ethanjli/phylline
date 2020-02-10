@@ -7,7 +7,7 @@ import itertools
 
 from phylline.links.clocked import LinkClockRequest, LinkClockTime
 from phylline.links.links import GenericLinkAbove, GenericLinkBelow
-from phylline.processors import proceed, wait  # Any protocols
+from phylline.processors import proceed, wait
 from phylline.util.interfaces import SetterProperty
 from phylline.util.iterables import make_collection, remove_none
 

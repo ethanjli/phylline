@@ -6,7 +6,7 @@
 
 from phylline.links.links import GenericLinkAbove, GenericLinkBelow
 from phylline.pipes import AutomaticPipe, ManualPipe
-from phylline.processors import wait  # Any protocols
+from phylline.processors import proceed, wait
 from phylline.util.interfaces import SetterProperty
 from phylline.util.iterables import remove_none
 
@@ -231,8 +231,10 @@ class PipelineBottomCoupler(object):
         self.is_manual_two = isinstance(self.pipeline_two, ManualPipeline)
         if isinstance(self.pipeline_one, AutomaticPipeline):
             self.pipeline_one.after_write = self._write_one
+            self.pipeline_one.after_send = self._send_one
         if isinstance(self.pipeline_two, AutomaticPipeline):
             self.pipeline_two.after_write = self._write_two
+            self.pipeline_two.after_send = self._send_two
 
     def __repr__(self):
         """Represent the coupler as a string."""
@@ -248,8 +250,10 @@ class PipelineBottomCoupler(object):
         self.pipeline_two.update_clock(clock_time)
         if self.is_manual_one:
             self.write_one()
+            self.send_one()
         if self.is_manual_two:
             self.write_two()
+            self.send_two()
 
     def _write_one(self, buffer):
         """Write the buffer to the connection.
@@ -257,7 +261,7 @@ class PipelineBottomCoupler(object):
         This is used to overwrite the after_write of the bottom of the pipeline
         if it's an automatic pipeline.
         """
-        # print('Sending to pipeline two: {}'.format(hex_bytes(buffer)))
+        # print('Sending to pipeline two: {}'.format(buffer))
         self.pipeline_two.to_read(buffer)
         yield from wait()
 
@@ -267,7 +271,7 @@ class PipelineBottomCoupler(object):
         This is used to overwrite the after_write of the bottom of the pipeline
         if it's an automatic pipeline.
         """
-        # print('Sending to pipeline one: {}'.format(hex_bytes(buffer)))
+        # print('Sending to pipeline one: {}'.format(buffer))
         self.pipeline_one.to_read(buffer)
         yield from wait()
 
@@ -291,4 +295,46 @@ class PipelineBottomCoupler(object):
         data = self.pipeline_two.to_write()
         if data:
             self.pipeline_one.to_read(data)
+        return data
+
+    def _send_one(self, event):
+        """Send the event to the connection.
+
+        This is used to overwrite the after_send of the bottom of the pipeline
+        if it's an automatic pipeline.
+        """
+        # print('Sending to pipeline two: {}'.format(event))
+        self.pipeline_two.to_receive(event)
+        yield from proceed()
+
+    def _send_two(self, event):
+        """Send the event to the connection.
+
+        This is used to overwrite the after_send of the bottom of the pipeline
+        if it's an automatic pipeline.
+        """
+        # print('Sending to pipeline one: {}'.format(event))
+        self.pipeline_one.to_receive(event)
+        yield from proceed()
+
+    def send_one(self):
+        """Update the send side of the coupler.
+
+        This is used for manual writing from the bottom of the pipeline if it's not
+        an automatic pipeline.
+        """
+        data = self.pipeline_one.to_send()
+        if data:
+            self.pipeline_two.to_receive(data)
+        return data
+
+    def send_two(self):
+        """Update the send side of the coupler.
+
+        This is used for manual writing from the bottom of the pipeline if it's not
+        an automatic pipeline.
+        """
+        data = self.pipeline_two.to_send()
+        if data:
+            self.pipeline_one.to_receive(data)
         return data

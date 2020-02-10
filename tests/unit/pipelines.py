@@ -95,9 +95,9 @@ def make_pipeline_nested(pipeline_type):
 ])
 def test_manual_pipeline(pipeline_factory):
     """Exercise ManualPipeline's interface."""
-    # print('Testing Manual Pipeline with factory {}:'.format(pipeline_factory.__name__))
+    print('Testing Manual Pipeline with factory {}:'.format(pipeline_factory.__name__))
     pipeline = pipeline_factory(ManualPipeline)
-    # print(pipeline)
+    print(pipeline)
 
     # Read/write on links with directional sync
     write_bottom_chunked_buffers(pipeline.bottom)
@@ -106,7 +106,7 @@ def test_manual_pipeline(pipeline_factory):
     write_top_events(pipeline.top)
     assert pipeline.sync_down() is None
     result = pipeline.bottom.to_write()
-    # print('Pipeline bottom wrote to stream: {}'.format(result))
+    print('Pipeline bottom wrote to stream: {}'.format(result))
     assert result == HIGHER_CHUNKED_STREAM
 
     # Read/write on links with bidirectional sync
@@ -116,7 +116,7 @@ def test_manual_pipeline(pipeline_factory):
     write_top_events(pipeline.top)
     assert pipeline.sync() is None
     result = pipeline.bottom.to_write()
-    # print('Pipeline bottom wrote to stream: {}'.format(result))
+    print('Pipeline bottom wrote to stream: {}'.format(result))
     assert result == HIGHER_CHUNKED_STREAM
 
     # Read/write on pipe with bidirectionl sync
@@ -126,15 +126,15 @@ def test_manual_pipeline(pipeline_factory):
     write_top_events(pipeline)
     assert pipeline.sync() is None
     result = pipeline.to_write()
-    # print('Pipeline bottom wrote to stream: {}'.format(result))
+    print('Pipeline bottom wrote to stream: {}'.format(result))
     assert result == HIGHER_CHUNKED_STREAM
 
 
 def test_manual_pipeline_clocked():
     """Exercise ManualPipeline's clock functionality."""
-    # print('Testing Manual Pipeline with factory make_pipeline_delayed:')
+    print('Testing Manual Pipeline with factory make_pipeline_delayed:')
     pipeline = make_pipeline_delayed(ManualPipeline)
-    # print(pipeline)
+    print(pipeline)
 
     assert pipeline.update_clock(0) is None
     write_bottom_chunked_buffers(pipeline.bottom)
@@ -147,7 +147,7 @@ def test_manual_pipeline_clocked():
     assert pipeline.update_clock(1.0) is None
     assert_bottom_events(pipeline.top)
 
-    # print('Resetting clock...')
+    print('Resetting clock...')
     assert pipeline.update_clock(0) is None
     write_top_events(pipeline.top)
     assert pipeline.sync() == 1.0
@@ -167,16 +167,16 @@ def test_manual_pipeline_clocked():
 ])
 def test_automatic_pipeline(pipeline_factory):
     """Exercise AutomaticPipeline's interface."""
-    # print('Testing Automatic Pipeline with factory {}:'.format(pipeline_factory.__name__))
+    print('Testing Automatic Pipeline with factory {}:'.format(pipeline_factory.__name__))
     automatic_pipeline = pipeline_factory(AutomaticPipeline)
-    # print(automatic_pipeline)
+    print(automatic_pipeline)
 
     # Read/write on links
     write_bottom_chunked_buffers(automatic_pipeline.bottom)
     assert_bottom_events(automatic_pipeline.top)
     write_top_events(automatic_pipeline.top)
     result = automatic_pipeline.bottom.to_write()
-    # print('Pipeline bottom wrote to stream: {}'.format(result))
+    print('Pipeline bottom wrote to stream: {}'.format(result))
     assert result == HIGHER_CHUNKED_STREAM
 
     # Read/write on pipeline
@@ -184,15 +184,15 @@ def test_automatic_pipeline(pipeline_factory):
     assert_bottom_events(automatic_pipeline)
     write_top_events(automatic_pipeline)
     result = automatic_pipeline.to_write()
-    # print('Pipeline bottom wrote to stream: {}'.format(result))
+    print('Pipeline bottom wrote to stream: {}'.format(result))
     assert result == HIGHER_CHUNKED_STREAM
 
 
 def test_automatic_pipeline_clocked():
     """Exercise AutomaticPipeline's clock functionality."""
-    # print('Testing Automatic Pipeline with factory make_pipeline_delayed:')
+    print('Testing Automatic Pipeline with factory make_pipeline_delayed:')
     pipeline = make_pipeline_delayed(AutomaticPipeline)
-    # print(pipeline)
+    print(pipeline)
 
     assert pipeline.update_clock(0) is None
     write_bottom_chunked_buffers(pipeline.bottom)
@@ -205,7 +205,7 @@ def test_automatic_pipeline_clocked():
     assert pipeline.update_clock(1.0) is None
     assert_bottom_events(pipeline.top)
 
-    # print('Resetting clock...')
+    print('Resetting clock...')
     assert pipeline.update_clock(0) is None
     write_top_events(pipeline.top)
     assert pipeline.update_clock(0) == 1.0
@@ -237,26 +237,26 @@ def make_pipeline_loopback(pipeline_factory):
 
 def test_manual_pipeline_loopback():
     """Exercise ManualPipeline's interface."""
-    # print('Testing Manual Pipeline with factory make_pipeline_loopback:')
+    print('Testing Manual Pipeline with factory make_pipeline_loopback:')
     manual_pipeline = make_pipeline_loopback(ManualPipeline)
-    # print(manual_pipeline)
+    print(manual_pipeline)
 
     write_bottom_chunked_buffers(manual_pipeline.bottom)
     assert manual_pipeline.sync() is None
     result = manual_pipeline.bottom.to_write()
-    # print('Pipeline bottom wrote to stream: {}'.format(result))
+    print('Pipeline bottom wrote to stream: {}'.format(result))
     assert result == LOWER_CHUNKED_STREAM
 
 
 def test_automatic_pipeline_loopback():
     """Exercise ManualPipeline's interface."""
-    # print('Testing Automatic Pipeline with factory make_pipeline_loopback:')
+    print('Testing Automatic Pipeline with factory make_pipeline_loopback:')
     automatic_pipeline = make_pipeline_loopback(AutomaticPipeline)
-    # print(automatic_pipeline)
+    print(automatic_pipeline)
 
     write_bottom_chunked_buffers(automatic_pipeline.bottom)
     result = automatic_pipeline.bottom.to_write()
-    # print('Pipeline bottom wrote to stream: {}'.format(result))
+    print('Pipeline bottom wrote to stream: {}'.format(result))
     assert result == LOWER_CHUNKED_STREAM
 
 
@@ -265,17 +265,32 @@ def assert_loopback_below(stack, payload):
     stack.send(payload)
     assert stack.has_receive()
     result = stack.receive()
-    # print('Loopback received: {}'.format(result))
+    print('Loopback received: {}'.format(result))
     assert result.data == payload
 
 
-def test_loopback_pipeline_bottom_coupler():
-    """Test for pipeline bottom coupling."""
-    # print('Testing byte buffer loopback with PipelineBottomCoupler...')
+def test_loopback_pipeline_bottom_coupler_stream():
+    """Test for pipeline bottom coupling on streams."""
+    print('Testing byte buffer loopback with PipelineBottomCoupler...')
     pipeline_one = make_pipeline_nested(AutomaticPipeline)
     pipeline_two = make_pipeline_loopback(AutomaticPipeline)
     coupler = PipelineBottomCoupler(pipeline_one, pipeline_two)
-    # print(coupler)
+    print(coupler)
+    payload = b'\1\2\3\4'
+    assert_loopback_below(pipeline_one.top, payload)
+    assert_loopback_below(pipeline_one, payload)
+    assert_loopback_below(coupler.pipeline_one, payload)
+
+
+def test_loopback_pipeline_bottom_coupler_event():
+    """Test for pipeline bottom coupling on events."""
+    print('Testing byte buffer loopback with PipelineBottomCoupler...')
+    pipeline_one = make_pipeline_events(AutomaticPipeline)
+    pipeline_two = AutomaticPipeline(
+        make_pipeline_events(AutomaticPipeline), TopLoopbackLink()
+    )
+    coupler = PipelineBottomCoupler(pipeline_one, pipeline_two)
+    print(coupler)
     payload = b'\1\2\3\4'
     assert_loopback_below(pipeline_one.top, payload)
     assert_loopback_below(pipeline_one, payload)

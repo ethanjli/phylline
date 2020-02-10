@@ -35,7 +35,7 @@ def write_top_events(event_link_above):
 
 def test_manual_pipe():
     """Exercise ManualPipe's interface."""
-    # print('Testing Piped Event Links with Manual Synchronization:')
+    print('Testing Piped Event Links with Manual Synchronization:')
     chunked_stream_link = ChunkedStreamLink()
     event_link = EventLink()
     pipe = ManualPipe(chunked_stream_link, event_link)
@@ -47,7 +47,7 @@ def test_manual_pipe():
     write_top_events(event_link)
     pipe.sync()
     result = chunked_stream_link.to_write()
-    # print('Chunked Stream Link wrote to stream: {}'.format(result))
+    print('Chunked Stream Link wrote to stream: {}'.format(result))
     assert result == HIGHER_CHUNKED_STREAM
 
     # Read/write on pipe
@@ -57,16 +57,16 @@ def test_manual_pipe():
     write_top_events(pipe)
     pipe.sync()
     result = pipe.to_write()
-    # print('Chunked Stream Link wrote to stream: {}'.format(result))
+    print('Chunked Stream Link wrote to stream: {}'.format(result))
     assert result == HIGHER_CHUNKED_STREAM
 
 
 def test_manual_pipe_clocked():
     """Exercise ManualPipe's clock functionality."""
-    # print('Testing Piped Clocked Event Links with Manual Synchronization:')
+    print('Testing Piped Clocked Event Links with Manual Synchronization:')
     pipe = ManualPipe(ChunkedStreamLink(), DelayedEventLink())
 
-    # print('On deadline:')
+    print('On deadline:')
     assert pipe.update_clock(0) is None
     write_bottom_chunked_buffers(pipe)
     assert pipe.sync() is None
@@ -78,7 +78,7 @@ def test_manual_pipe_clocked():
     assert pipe.update_clock(1.0) is None
     assert_bottom_events(pipe)
 
-    # print('After deadline:')
+    print('After deadline:')
     assert pipe.update_clock(0) is None
     write_top_events(pipe)
     assert pipe.update_clock(0.5) == 1.0
@@ -92,7 +92,7 @@ def test_manual_pipe_clocked():
 
 def test_manual_pipe_composition():
     """Exercise ManualPipe nested composition."""
-    # print('Testing Nesting of Piped Event Links with Manual Synchronization:')
+    print('Testing Nesting of Piped Event Links with Manual Synchronization:')
     chunked_stream_link = ChunkedStreamLink()
     upper_event_link = EventLink()
     outer_pipe = ManualPipe(
@@ -107,7 +107,7 @@ def test_manual_pipe_composition():
     write_top_events(upper_event_link)
     outer_pipe.sync()
     result = chunked_stream_link.to_write()
-    # print('Chunked Stream Link wrote to stream: {}'.format(result))
+    print('Chunked Stream Link wrote to stream: {}'.format(result))
     assert result == HIGHER_CHUNKED_STREAM
 
     # Read/write on pipe
@@ -117,13 +117,13 @@ def test_manual_pipe_composition():
     write_top_events(outer_pipe)
     outer_pipe.sync()
     result = outer_pipe.to_write()
-    # print('Chunked Stream Link wrote to stream: {}'.format(result))
+    print('Chunked Stream Link wrote to stream: {}'.format(result))
     assert result == HIGHER_CHUNKED_STREAM
 
 
 def test_automatic_pipe():
     """Exercise AutomaticPipe's interface."""
-    # print('Testing Piped Event Links with Automatic Synchronization:')
+    print('Testing Piped Event Links with Automatic Synchronization:')
     chunked_stream_link = ChunkedStreamLink()
     event_link = EventLink()
     pipe = AutomaticPipe(chunked_stream_link, event_link)
@@ -133,7 +133,7 @@ def test_automatic_pipe():
     assert_bottom_events(event_link)
     write_top_events(event_link)
     result = chunked_stream_link.to_write()
-    # print('Chunked Stream Link wrote to stream: {}'.format(result))
+    print('Chunked Stream Link wrote to stream: {}'.format(result))
     assert result == HIGHER_CHUNKED_STREAM
 
     # Read/write on pipe
@@ -141,13 +141,13 @@ def test_automatic_pipe():
     assert_bottom_events(pipe)
     write_top_events(pipe)
     result = pipe.to_write()
-    # print('Chunked Stream Link wrote to stream: {}'.format(result))
+    print('Chunked Stream Link wrote to stream: {}'.format(result))
     assert result == HIGHER_CHUNKED_STREAM
 
 
 def test_automatic_pipe_clocked():
     """Exercise AutomaticPipe's clock functionality."""
-    # print('Testing Piped Clocked Event Links with Automatic Synchronization:')
+    print('Testing Piped Clocked Event Links with Automatic Synchronization:')
     pipe = AutomaticPipe(ChunkedStreamLink(), DelayedEventLink())
     assert pipe.update_clock(0) is None
     write_bottom_chunked_buffers(pipe)
@@ -158,11 +158,11 @@ def test_automatic_pipe_clocked():
     assert not pipe.has_receive()
     assert pipe.update_clock(1.0) is None
     assert_bottom_events(pipe)
-    # print('Resetting clock...')
+    print('Resetting clock...')
     assert pipe.update_clock(0) is None
-    # print('Writing top events...')
+    print('Writing top events...')
     write_top_events(pipe)
-    # print('Wrote top events!')
+    print('Wrote top events!')
     assert pipe.update_clock(0.5) == 1.0
     assert not pipe.to_write()
     assert pipe.update_clock(0.75) == 1.0
@@ -174,7 +174,7 @@ def test_automatic_pipe_clocked():
 
 def test_automatic_pipe_composition():
     """Exercise AutomaticPipe nested composition."""
-    # print('Testing Nesting of Piped Event Links with Automatic Synchronization:')
+    print('Testing Nesting of Piped Event Links with Automatic Synchronization:')
     chunked_stream_link = ChunkedStreamLink()
     upper_event_link = EventLink()
     outer_pipe = AutomaticPipe(
@@ -187,7 +187,7 @@ def test_automatic_pipe_composition():
     assert_bottom_events(upper_event_link)
     write_top_events(upper_event_link)
     result = chunked_stream_link.to_write()
-    # print('Chunked Stream Link wrote to stream: {}'.format(result))
+    print('Chunked Stream Link wrote to stream: {}'.format(result))
     assert result == HIGHER_CHUNKED_STREAM
 
     # Read/write on pipe
@@ -195,5 +195,5 @@ def test_automatic_pipe_composition():
     assert_bottom_events(outer_pipe)
     write_top_events(outer_pipe)
     result = outer_pipe.to_write()
-    # print('Chunked Stream Link wrote to stream: {}'.format(result))
+    print('Chunked Stream Link wrote to stream: {}'.format(result))
     assert result == HIGHER_CHUNKED_STREAM
