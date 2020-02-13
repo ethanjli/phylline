@@ -253,7 +253,7 @@ class ManualPipe(Pipe):
 
     # Synchronization
 
-    def sync_bottom(self):
+    def sync_bottom_links(self):
         """If any bottom links are also ManualPipes, sync them."""
         for link in self.bottom:
             try:
@@ -317,7 +317,10 @@ class ManualPipe(Pipe):
         Returns the earliest clock update requested by the receiver of the bottom link.
         """
         earliest_clock_request = None
-        self.sync_bottom()
+        self.sync_bottom_links()
+        if self.bottom == self.top:
+            return None
+
         try:
             for event in bottom.receive_all():
                 if isinstance(event, LinkClockRequest):
@@ -340,6 +343,9 @@ class ManualPipe(Pipe):
         """
         earliest_clock_request = None
         self.sync_top_links()
+        if self.bottom == self.top:
+            return None
+
         try:
             for event in top.to_send_all():
                 if isinstance(event, LinkClockRequest):
@@ -352,7 +358,7 @@ class ManualPipe(Pipe):
             self.write_down(top.to_write())
         except AttributeError:
             pass
-        self.sync_bottom()
+        self.sync_bottom_links()
         return earliest_clock_request
 
     # Clocks
@@ -388,16 +394,17 @@ class AutomaticPipe(Pipe):
         super().__init__(bottom, top)
         self.connected_up = True
         self.connected_down = True
-        for bottom in self.bottom:
-            if hasattr(bottom, 'after_receive'):
-                bottom.after_receive = self._after_receive
-            if hasattr(bottom, 'after_read'):
-                bottom.after_read = self._after_read
-        for top in self.top:
-            if hasattr(top, 'after_send'):
-                top.after_send = self._after_send
-            if hasattr(top, 'after_write'):
-                top.after_write = self._after_write
+        if self.bottom != self.top:
+            for bottom in self.bottom:
+                if hasattr(bottom, 'after_receive'):
+                    bottom.after_receive = self._after_receive
+                if hasattr(bottom, 'after_read'):
+                    bottom.after_read = self._after_read
+            for top in self.top:
+                if hasattr(top, 'after_send'):
+                    top.after_send = self._after_send
+                if hasattr(top, 'after_write'):
+                    top.after_write = self._after_write
         self.bottom_clocked = [
             link for link in self.bottom if hasattr(link, 'update_clock')
         ]

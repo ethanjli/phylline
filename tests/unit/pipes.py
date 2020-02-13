@@ -61,6 +61,33 @@ def test_manual_pipe():
     assert result == HIGHER_CHUNKED_STREAM
 
 
+def test_manual_singular():
+    """Exercise ManualPipe's single-link handling."""
+    print('Testing Piped Singular Event Link with Manual Synchronization:')
+    chunked_stream_link = ChunkedStreamLink()
+    pipe = ManualPipe(chunked_stream_link, chunked_stream_link)
+
+    # Read/write on links
+    write_bottom_chunked_buffers(chunked_stream_link)
+    pipe.sync()
+    assert_bottom_events(chunked_stream_link)
+    write_top_events(chunked_stream_link)
+    pipe.sync()
+    result = chunked_stream_link.to_write()
+    print('Chunked Stream Link wrote to stream: {}'.format(result))
+    assert result == HIGHER_CHUNKED_STREAM
+
+    # Read/write on pipe
+    write_bottom_chunked_buffers(pipe)
+    pipe.sync()
+    assert_bottom_events(pipe)
+    write_top_events(pipe)
+    pipe.sync()
+    result = pipe.to_write()
+    print('Chunked Stream Link wrote to stream: {}'.format(result))
+    assert result == HIGHER_CHUNKED_STREAM
+
+
 def test_manual_pipe_clocked():
     """Exercise ManualPipe's clock functionality."""
     print('Testing Piped Clocked Event Links with Manual Synchronization:')
@@ -132,6 +159,29 @@ def test_automatic_pipe():
     write_bottom_chunked_buffers(chunked_stream_link)
     assert_bottom_events(event_link)
     write_top_events(event_link)
+    result = chunked_stream_link.to_write()
+    print('Chunked Stream Link wrote to stream: {}'.format(result))
+    assert result == HIGHER_CHUNKED_STREAM
+
+    # Read/write on pipe
+    write_bottom_chunked_buffers(pipe)
+    assert_bottom_events(pipe)
+    write_top_events(pipe)
+    result = pipe.to_write()
+    print('Chunked Stream Link wrote to stream: {}'.format(result))
+    assert result == HIGHER_CHUNKED_STREAM
+
+
+def test_automatic_singular():
+    """Exercise AutomaticPipe's single-link handling."""
+    print('Testing Piped Singular Event Link with Automatic Synchronization:')
+    chunked_stream_link = ChunkedStreamLink()
+    pipe = AutomaticPipe(chunked_stream_link, chunked_stream_link)
+
+    # Read/write on links
+    write_bottom_chunked_buffers(chunked_stream_link)
+    assert_bottom_events(chunked_stream_link)
+    write_top_events(chunked_stream_link)
     result = chunked_stream_link.to_write()
     print('Chunked Stream Link wrote to stream: {}'.format(result))
     assert result == HIGHER_CHUNKED_STREAM

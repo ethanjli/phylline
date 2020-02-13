@@ -21,10 +21,15 @@ class Pipeline(GenericLinkBelow, GenericLinkAbove):
         """Initialize the pipeline."""
         self.name = name
         self.layers = layers
-        self.pipes = [
-            pipe_factory(below, above, **pipe_factory_kwargs)
-            for (below, above) in zip(self.layers[:-1], self.layers[1:])
-        ]
+        if len(layers) > 1:
+            self.pipes = [
+                pipe_factory(below, above, **pipe_factory_kwargs)
+                for (below, above) in zip(self.layers[:-1], self.layers[1:])
+            ]
+        elif len(layers) == 1:
+            self.pipes = [pipe_factory(self.layers[0], self.layers[0])]
+        else:
+            raise NotImplementedError('Empty pipeline is not supported!')
         self.next_clock_request = None
         self.last_clock_update = None
 

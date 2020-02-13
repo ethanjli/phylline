@@ -22,6 +22,16 @@ from tests.unit.pipes import (
 )
 
 
+def make_pipeline_singular(pipeline_type):
+    """Make a singular pipeline."""
+    pipeline = pipeline_type(
+        ChunkedStreamLink()
+    )
+    assert isinstance(pipeline.bottom, ChunkedStreamLink)
+    assert isinstance(pipeline.top, ChunkedStreamLink)
+    return pipeline
+
+
 def make_pipeline_short(pipeline_type):
     """Make a short pipeline."""
     pipeline = pipeline_type(
@@ -79,7 +89,7 @@ def make_pipeline_events(pipeline_type):
 def make_pipeline_nested(pipeline_type):
     """Make a nested pipeline."""
     pipeline = pipeline_type(
-        make_pipeline_long(pipeline_type),
+        make_pipeline_singular(pipeline_type),
         make_pipeline_events(pipeline_type),
         EventLink(),
         AutomaticPipe(EventLink(), EventLink()),
@@ -89,6 +99,7 @@ def make_pipeline_nested(pipeline_type):
 
 
 @pytest.mark.parametrize('pipeline_factory', [
+    make_pipeline_singular,
     make_pipeline_short,
     make_pipeline_long,
     make_pipeline_nested
@@ -161,6 +172,7 @@ def test_manual_pipeline_clocked():
 
 
 @pytest.mark.parametrize('pipeline_factory', [
+    make_pipeline_singular,
     make_pipeline_short,
     make_pipeline_long,
     make_pipeline_nested

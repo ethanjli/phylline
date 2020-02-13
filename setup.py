@@ -113,7 +113,7 @@ with open('README.md', 'r') as f:
 
 setuptools.setup(
     name=PACKAGE_NAME,
-    version='0.1.3',
+    version='0.1.4',
     description='Sans-I/O bidirectional data pipeline framework for making layered protocols.',
     url='https://github.com/ethanjli/phylline',
     author='Ethan Li',
