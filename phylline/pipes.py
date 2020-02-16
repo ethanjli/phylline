@@ -294,7 +294,7 @@ class ManualPipe(Pipe):
         clock_requests = list(remove_none(self._sync_up(bottom) for bottom in self.bottom))
         if clock_requests:
             next_clock_request = min(clock_requests)
-            self.next_clock_request = min(self.next_clock_request, next_clock_request)
+            self.update_clock_request(next_clock_request)
         return self.next_clock_request
 
     def sync_down(self):
@@ -308,7 +308,7 @@ class ManualPipe(Pipe):
         clock_requests = list(remove_none(self._sync_down(top) for top in self.top))
         if clock_requests:
             next_clock_request = min(clock_requests)
-            self.next_clock_request = min(self.next_clock_request, next_clock_request)
+            self.update_clock_request(next_clock_request)
         return self.next_clock_request
 
     def _sync_up(self, bottom):
@@ -371,6 +371,17 @@ class ManualPipe(Pipe):
         super().update_clock(time)
         return self.sync()
 
+    def update_clock_request(self, event):
+        """Update the next clock request based on the event."""
+        if self.next_clock_request is None:
+            self.next_clock_request = event
+        else:
+            self.next_clock_request = min(self.next_clock_request, event)
+        # print(
+        #     'Updated next_clock_request to {}!'
+        #     .format(self.next_clock_request)
+        # )
+
 
 class AutomaticPipe(Pipe):
     """Link to join the queues of two EventLinks together in a pipeline.
@@ -418,11 +429,7 @@ class AutomaticPipe(Pipe):
     def _after_receive(self, event):
         """Pass the processed event up to the top layer."""
         if isinstance(event, LinkClockRequest):
-            self.next_clock_request = min(self.next_clock_request, event)
-            # print(
-            #     'AutomaticPipe updated next_clock_request to {}!'
-            #     .format(self.next_clock_request)
-            # )
+            self.update_clock_request(event)
             return
         if not self.connected_up:
             return
@@ -434,11 +441,7 @@ class AutomaticPipe(Pipe):
     def _after_send(self, event):
         """Pass the processed event down to the bottom layer."""
         if isinstance(event, LinkClockRequest):
-            self.next_clock_request = min(self.next_clock_request, event)
-            # print(
-            #     'AutomaticPipe updated next_clock_request to {}!'
-            #     .format(self.next_clock_request)
-            # )
+            self.update_clock_request(event)
             return
         if not self.connected_down:
             return
@@ -501,3 +504,14 @@ class AutomaticPipe(Pipe):
         for link in itertools.chain(self.top_clocked, self.bottom_clocked):
             link.to_receive(LinkClockTime(time))
         return self.next_clock_request
+
+    def update_clock_request(self, event):
+        """Update the next clock request based on the event."""
+        if self.next_clock_request is None:
+            self.next_clock_request = event
+        else:
+            self.next_clock_request = min(self.next_clock_request, event)
+        # print(
+        #     'Updated next_clock_request to {}!'
+        #     .format(self.next_clock_request)
+        # )

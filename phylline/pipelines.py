@@ -71,6 +71,13 @@ class Pipeline(GenericLinkBelow, GenericLinkAbove):
             self.next_clock_request is not None and time >= self.next_clock_request
         )
 
+    def update_clock_request(self, event):
+        """Update the next clock request based on the event."""
+        if self.next_clock_request is None:
+            self.next_clock_request = event
+        else:
+            self.next_clock_request = min(self.next_clock_request, event)
+
     # EventLink/StreamLink-like interface
 
     @SetterProperty
@@ -166,7 +173,7 @@ class ManualPipeline(Pipeline):
         clock_requests = list(remove_none(pipe.sync_up() for pipe in self.pipes))
         if clock_requests:
             next_clock_request = min(clock_requests)
-            self.next_clock_request = min(self.next_clock_request, next_clock_request)
+            self.update_clock_request(next_clock_request)
         return self.next_clock_request
 
     def sync_down(self):
@@ -177,7 +184,7 @@ class ManualPipeline(Pipeline):
         clock_requests = list(remove_none(pipe.sync_down() for pipe in reversed(self.pipes)))
         if clock_requests:
             next_clock_request = min(clock_requests)
-            self.next_clock_request = min(self.next_clock_request, next_clock_request)
+            self.update_clock_request(next_clock_request)
         return self.next_clock_request
 
     # Clocks
@@ -212,16 +219,10 @@ class AutomaticPipeline(Pipeline):
             # print('Reset next clock request to None!')
         for pipe in self.pipes_clocked:
             next_clock_request = pipe.update_clock_send(time)
-            if self.next_clock_request is None:
-                self.next_clock_request = next_clock_request
-            elif next_clock_request is not None:
-                self.next_clock_request = min(self.next_clock_request, next_clock_request)
+            self.update_clock_request(next_clock_request)
         for pipe in reversed(self.pipes_clocked):
             next_clock_request = pipe.update_clock_receive(time)
-            if self.next_clock_request is None:
-                self.next_clock_request = next_clock_request
-            elif next_clock_request is not None:
-                self.next_clock_request = min(self.next_clock_request, next_clock_request)
+            self.update_clock_request(next_clock_request)
         return self.next_clock_request
 
 
