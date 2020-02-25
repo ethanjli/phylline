@@ -86,9 +86,19 @@ class Pipeline(GenericLinkBelow, GenericLinkAbove):
         self.pipes[-1].after_receive = handler
 
     @SetterProperty
+    def directly_receive(self, handler):
+        """Mimic EventLink.directly_receive."""
+        self.pipes[-1].directly_receive = handler
+
+    @SetterProperty
     def after_send(self, handler):
         """Mimic EventLink.after_receive."""
         self.pipes[0].after_send = handler
+
+    @SetterProperty
+    def directly_to_send(self, handler):
+        """Mimic EventLink.directly_to_send."""
+        self.pipes[0].directly_to_send = handler
 
     @SetterProperty
     def after_read(self, handler):

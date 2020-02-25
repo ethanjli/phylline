@@ -106,11 +106,25 @@ class Pipe(GenericLinkBelow, GenericLinkAbove):
                 top.after_receive = handler
 
     @SetterProperty
+    def directly_receive(self, handler):
+        """Mimic EventLink.directly_receive."""
+        for top in self.top:
+            if hasattr(top, 'directly_receive'):
+                top.directly_receive = handler
+
+    @SetterProperty
     def after_send(self, handler):
         """Mimic EventLink.after_receive."""
         for bottom in self.bottom:
             if hasattr(bottom, 'after_send'):
                 bottom.after_send = handler
+
+    @SetterProperty
+    def directly_to_send(self, handler):
+        """Mimic EventLink.directly_to_receive."""
+        for bottom in self.bottom:
+            if hasattr(bottom, 'directly_to_send'):
+                bottom.directly_to_send = handler
 
     @SetterProperty
     def after_read(self, handler):
@@ -411,11 +425,15 @@ class AutomaticPipe(Pipe):
                     bottom.after_receive = self._after_receive
                 if hasattr(bottom, 'after_read'):
                     bottom.after_read = self._after_read
+                if hasattr(bottom, 'directly_receive'):
+                    bottom.directly_receive = self._directly_receive
             for top in self.top:
                 if hasattr(top, 'after_send'):
                     top.after_send = self._after_send
                 if hasattr(top, 'after_write'):
                     top.after_write = self._after_write
+                if hasattr(top, 'directly_to_send'):
+                    top.directly_to_send = self._directly_to_send
         self.bottom_clocked = [
             link for link in self.bottom if hasattr(link, 'update_clock')
         ]
@@ -426,7 +444,7 @@ class AutomaticPipe(Pipe):
         self.next_clock_request = None
         self.last_clock_update = None
 
-    def _after_receive(self, event):
+    def _directly_receive(self, event):
         """Pass the processed event up to the top layer."""
         if isinstance(event, LinkClockRequest):
             self.update_clock_request(event)
@@ -435,10 +453,14 @@ class AutomaticPipe(Pipe):
             return
         # print('AutomaticPipe passing event up: {}'.format(event))
         self.receive_up(event)
+
+    def _after_receive(self, event):
+        """Pass the processed event up to the top layer."""
+        self._directly_receive(event)
         yield from proceed()  # proceed to process any additional events
         # print('AutomaticPipe after_receive finished yielding from proceed!')
 
-    def _after_send(self, event):
+    def _directly_to_send(self, event):
         """Pass the processed event down to the bottom layer."""
         if isinstance(event, LinkClockRequest):
             self.update_clock_request(event)
@@ -447,6 +469,10 @@ class AutomaticPipe(Pipe):
             return
         # print('AutomaticPipe passing event down: {}'.format(event))
         self.send_down(event)
+
+    def _after_send(self, event):
+        """Pass the processed event down to the bottom layer."""
+        self._directly_to_send(event)
         yield from proceed()  # proceed to process any additional events
         # print('AutomaticPipe after_send finished yielding from proceed!')
 
