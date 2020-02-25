@@ -30,7 +30,8 @@ class Pipeline(GenericLinkBelow, GenericLinkAbove):
             self.pipes = [pipe_factory(self.layers[0], self.layers[0])]
         else:
             raise NotImplementedError('Empty pipeline is not supported!')
-        self.next_clock_request = None
+        self.pipes_clocked = [pipe for pipe in self.pipes if pipe.clocked]
+        self.clocked = len(self.pipes_clocked) > 0
         self.last_clock_update = None
 
     @property
@@ -56,12 +57,20 @@ class Pipeline(GenericLinkBelow, GenericLinkAbove):
 
     # Clocks
 
+    @property
+    def next_clock_request(self):
+        """Return the next clock update requested by the pipeline."""
+        clock_requests = list(remove_none(
+            pipe.next_clock_request for pipe in self.pipes_clocked
+        ))
+        if not clock_requests:
+            return None
+        # print('Next clock request for pipeline {}: {}'.format(self, min(clock_requests)))
+        return min(clock_requests)
+
     def update_clock(self, time):
         """Update the clock of any ClockedLink and do any necessary processing."""
         self.last_clock_update = time
-        if self.clock_update_requested(time):
-            self.next_clock_request = None
-            # print('Reset next clock request to None!')
         for pipe in self.pipes:
             pipe.update_clock(time)
 
@@ -70,13 +79,6 @@ class Pipeline(GenericLinkBelow, GenericLinkAbove):
         return (
             self.next_clock_request is not None and time >= self.next_clock_request
         )
-
-    def update_clock_request(self, event):
-        """Update the next clock request based on the event."""
-        if self.next_clock_request is None:
-            self.next_clock_request = event
-        else:
-            self.next_clock_request = min(self.next_clock_request, event)
 
     # EventLink/StreamLink-like interface
 
@@ -176,26 +178,14 @@ class ManualPipeline(Pipeline):
         return self.next_clock_request
 
     def sync_up(self):
-        """Sync data from the lowest layer to the highest.
-
-        Returns the earliest clock update requested by any bottom link in the pipeline.
-        """
-        clock_requests = list(remove_none(pipe.sync_up() for pipe in self.pipes))
-        if clock_requests:
-            next_clock_request = min(clock_requests)
-            self.update_clock_request(next_clock_request)
-        return self.next_clock_request
+        """Sync data from the lowest layer to the highest."""
+        for pipe in self.pipes:
+            pipe.sync_up()
 
     def sync_down(self):
-        """Sync data from the highest layer to the lowest.
-
-        Returns the earliest clock update requested by any top link in the pipeline.
-        """
-        clock_requests = list(remove_none(pipe.sync_down() for pipe in reversed(self.pipes)))
-        if clock_requests:
-            next_clock_request = min(clock_requests)
-            self.update_clock_request(next_clock_request)
-        return self.next_clock_request
+        """Sync data from the highest layer to the lowest."""
+        for pipe in reversed(self.pipes):
+            pipe.sync_down()
 
     # Clocks
 
@@ -204,8 +194,15 @@ class ManualPipeline(Pipeline):
 
         Returns the earliest clock update requested by any processor within the pipeline.
         """
-        super().update_clock(time)
+        self.last_clock_update = time
+        for pipe in self.pipes:
+            pipe.update_clock(time)
         return self.sync()
+
+    def update_clock_request(self, event):
+        """Update the next clock request based on the event."""
+        for pipe in self.clocked_pipes:
+            pipe.update_clock_request(event)
 
 
 class AutomaticPipeline(Pipeline):
@@ -214,25 +211,18 @@ class AutomaticPipeline(Pipeline):
     def __init__(self, *layers, pipe_factory=AutomaticPipe, **kwargs):
         """Initialize the pipeline."""
         super().__init__(pipe_factory, *layers, **kwargs)
-        self.pipes_clocked = [pipe for pipe in self.pipes if pipe.clocked]
         self.clocked = len(self.pipes_clocked) > 0
-
-    # Clocks
 
     def update_clock(self, time):
         """Update the clock of any ClockedLink and do any necessary processing."""
         self.last_clock_update = time
         if not self.clocked:
             return
-        if self.next_clock_request is not None and time >= self.next_clock_request:
-            self.next_clock_request = None
-            # print('Reset next clock request to None!')
         for pipe in self.pipes_clocked:
-            next_clock_request = pipe.update_clock_send(time)
-            self.update_clock_request(next_clock_request)
+            pipe.update_clock_send(time)
         for pipe in reversed(self.pipes_clocked):
-            next_clock_request = pipe.update_clock_receive(time)
-            self.update_clock_request(next_clock_request)
+            pipe.update_clock_receive(time)
+        # print('Updated pipeline clock to {}!'.format(time))
         return self.next_clock_request
 
 

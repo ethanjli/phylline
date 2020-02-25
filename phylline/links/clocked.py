@@ -136,14 +136,25 @@ class ClockedLink(object):
         """Initialize members."""
         super().__init__(*args, **kwargs)
         self.clock = Clock(time=clock_start)
-        self.next_clock_request = TimeoutTimer(clock=self.clock)
+        self.next_clock_request_timer = TimeoutTimer(clock=self.clock)
 
     # Public interface
 
     def update_clock(self, time):
         """Update the clock of the link and do any necessary processing."""
+        # print('{}: updating clock to {}!'.format(self, time))
         self.to_receive(LinkClockTime(time, instance=self))
         self.send(LinkClockTime(time, instance=self))
+
+    @property
+    def next_clock_request(self):
+        """Determine the next requested clock update."""
+        if not self.next_clock_request_timer.running:
+            return None
+        return LinkClockRequest(
+            self.next_clock_request_timer.timeout_time,
+            context={'time': self.clock.time}, instance=self
+        )
 
     # Internal methods for implementers
 
@@ -164,17 +175,17 @@ class ClockedLink(object):
             return
         # print('Updating clock to: {}'.format(clock_time))
         self.clock.update(clock_time)
-        if self.next_clock_request.timed_out:
-            self.next_clock_request.reset_and_stop()
+        if self.next_clock_request_timer.timed_out:
+            self.next_clock_request_timer.reset_and_stop()
 
     def make_clock_request(self, time, context={}, previous=None):
         """Return a LinkClockRequest if time is different from the last request."""
         if (
-            self.next_clock_request.running
-            and math.isclose(self.next_clock_request.timeout_time, time)
+            self.next_clock_request_timer.running
+            and math.isclose(self.next_clock_request_timer.timeout_time, time)
         ):
             return None
-        self.next_clock_request.start(timeout=time - self.clock.time)
+        self.next_clock_request_timer.start(timeout=time - self.clock.time)
         return LinkClockRequest(
             time, context={'time': self.clock.time, **context}, instance=self,
             previous=previous

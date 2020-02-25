@@ -5,7 +5,7 @@ import itertools
 
 # Packages
 
-from phylline.links.clocked import LinkClockRequest, LinkClockTime
+from phylline.links.clocked import ClockedLink, LinkClockRequest  # , LinkClockTime
 from phylline.links.links import GenericLinkAbove, GenericLinkBelow
 from phylline.processors import proceed, wait
 from phylline.util.interfaces import SetterProperty
@@ -42,6 +42,25 @@ class Pipe(GenericLinkBelow, GenericLinkAbove):
         self.bottom = make_collection(bottom)
         self.top = make_collection(top)
         self.name = None
+
+        self._next_clock_request = None
+        self.last_clock_update = None
+
+        self.bottom_clocked = [
+            link for link in self.bottom
+            if (
+                (hasattr(link, 'clocked') and link.clocked)
+                or isinstance(link, ClockedLink)
+            )
+        ]
+        self.top_clocked = [
+            link for link in self.top
+            if (
+                (hasattr(link, 'clocked') and link.clocked)
+                or isinstance(link, ClockedLink)
+            )
+        ]
+        self.clocked = self.bottom_clocked or self.top_clocked
 
     def __repr__(self):
         """Return a string representation of the pipeline.
@@ -139,16 +158,6 @@ class Pipe(GenericLinkBelow, GenericLinkAbove):
         for bottom in self.bottom:
             if hasattr(bottom, 'after_write'):
                 bottom.after_write = handler
-
-    # Clocks
-
-    def update_clock(self, time):
-        """Update the clock of any ClockedLink and do any necessary processing."""
-        for link in itertools.chain(self.bottom, self.top):
-            try:
-                link.update_clock(time)
-            except AttributeError:
-                pass
 
     # Implement GenericLinkBelow
 
@@ -251,6 +260,42 @@ class Pipe(GenericLinkBelow, GenericLinkAbove):
             except AttributeError:
                 pass
 
+    # Clocks
+
+    @property
+    def next_clock_request(self):
+        """Return the next clock update requested by the pipeline."""
+        clock_requests = [self._next_clock_request]
+        clock_requests.extend(remove_none(
+            clocked.next_clock_request
+            for clocked in itertools.chain(self.bottom_clocked, self.top_clocked)
+        ))
+        if not clock_requests:
+            return None
+        # print('Next clock request for pipe {}: {}'.format(self, min(clock_requests)))
+        return min(clock_requests)
+
+    def update_clock(self, time):
+        """Update the clock of any ClockedLink and do any necessary processing."""
+        for link in itertools.chain(self.bottom, self.top):
+            try:
+                link.update_clock(time)
+            except AttributeError:
+                pass
+
+    def update_clock_request(self, event):
+        """Update the next clock request based on the event."""
+        clock_requests = [self._next_clock_request, event]
+        clock_requests = list(remove_none(clock_requests))
+        try:
+            self._next_clock_request = min(clock_requests)
+        except ValueError:
+            self._next_clock_request = None
+        # print(
+        #     'Updated _next_clock_request for pipe {} to {}!'
+        #     .format(self, self._next_clock_request)
+        # )
+
 
 class ManualPipe(Pipe):
     """Link to join two layers of EventLinks or StreamLinks together in a pipeline.
@@ -258,12 +303,6 @@ class ManualPipe(Pipe):
     This one requires manual synchronization between the links, by calling the
     sync method.
     """
-
-    def __init__(self, *args):
-        """Initialize members."""
-        super().__init__(*args)
-        self.next_clock_request = None
-        self.last_clock_update = None
 
     # Synchronization
 
@@ -307,8 +346,7 @@ class ManualPipe(Pipe):
         """
         clock_requests = list(remove_none(self._sync_up(bottom) for bottom in self.bottom))
         if clock_requests:
-            next_clock_request = min(clock_requests)
-            self.update_clock_request(next_clock_request)
+            self.update_clock_request(min(clock_requests))
         return self.next_clock_request
 
     def sync_down(self):
@@ -321,8 +359,7 @@ class ManualPipe(Pipe):
         """
         clock_requests = list(remove_none(self._sync_down(top) for top in self.top))
         if clock_requests:
-            next_clock_request = min(clock_requests)
-            self.update_clock_request(next_clock_request)
+            self.update_clock_request(min(clock_requests))
         return self.next_clock_request
 
     def _sync_up(self, bottom):
@@ -380,21 +417,10 @@ class ManualPipe(Pipe):
     def update_clock(self, time):
         """Update the clock of any ClockedLink and do any necessary processing."""
         if self.next_clock_request is not None and time >= self.next_clock_request:
-            self.next_clock_request = None
+            self._next_clock_request = None
         self.last_clock_update = time
         super().update_clock(time)
         return self.sync()
-
-    def update_clock_request(self, event):
-        """Update the next clock request based on the event."""
-        if self.next_clock_request is None:
-            self.next_clock_request = event
-        else:
-            self.next_clock_request = min(self.next_clock_request, event)
-        # print(
-        #     'Updated next_clock_request to {}!'
-        #     .format(self.next_clock_request)
-        # )
 
 
 class AutomaticPipe(Pipe):
@@ -434,15 +460,6 @@ class AutomaticPipe(Pipe):
                     top.after_write = self._after_write
                 if hasattr(top, 'directly_to_send'):
                     top.directly_to_send = self._directly_to_send
-        self.bottom_clocked = [
-            link for link in self.bottom if hasattr(link, 'update_clock')
-        ]
-        self.top_clocked = [
-            link for link in self.top if hasattr(link, 'update_clock')
-        ]
-        self.clocked = self.bottom_clocked or self.top_clocked
-        self.next_clock_request = None
-        self.last_clock_update = None
 
     def _directly_receive(self, event):
         """Pass the processed event up to the top layer."""
@@ -497,8 +514,10 @@ class AutomaticPipe(Pipe):
     def update_clock(self, time):
         """Update the clock of any ClockedLink and do any necessary processing."""
         self.last_clock_update = time
+        # print('Updating pipe clock to {}...'.format(time))
         self.update_clock_send(time)
         self.update_clock_receive(time)
+        # print('Updated pipe clock to {}!'.format(time))
         return self.next_clock_request
 
     def update_clock_send(self, time):
@@ -511,9 +530,12 @@ class AutomaticPipe(Pipe):
         if not self.clocked:
             return
         if self.next_clock_request is not None and time >= self.next_clock_request:
-            self.next_clock_request = None
+            self._next_clock_request = None
         for link in itertools.chain(self.bottom_clocked, self.top_clocked):
-            link.send(LinkClockTime(time))
+            try:
+                link.update_clock_send(time)
+            except AttributeError:
+                link.update_clock(time)
         return self.next_clock_request
 
     def update_clock_receive(self, time):
@@ -526,18 +548,10 @@ class AutomaticPipe(Pipe):
         if not self.clocked:
             return
         if self.next_clock_request is not None and time >= self.next_clock_request:
-            self.next_clock_request = None
+            self._next_clock_request = None
         for link in itertools.chain(self.top_clocked, self.bottom_clocked):
-            link.to_receive(LinkClockTime(time))
+            try:
+                link.update_clock_send(time)
+            except AttributeError:
+                link.update_clock(time)
         return self.next_clock_request
-
-    def update_clock_request(self, event):
-        """Update the next clock request based on the event."""
-        if self.next_clock_request is None:
-            self.next_clock_request = event
-        else:
-            self.next_clock_request = min(self.next_clock_request, event)
-        # print(
-        #     'Updated next_clock_request to {}!'
-        #     .format(self.next_clock_request)
-        # )

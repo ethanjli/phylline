@@ -96,11 +96,11 @@ def test_manual_pipe_clocked():
     print('On deadline:')
     assert pipe.update_clock(0) is None
     write_bottom_chunked_buffers(pipe)
-    assert pipe.sync() is None
+    assert pipe.sync().requested_time == 1.0
     assert_clock_request_event_received(pipe, 1.0)
-    assert pipe.update_clock(0.5) is None
+    assert pipe.update_clock(0.5).requested_time == 1.0
     assert not pipe.has_receive()
-    assert pipe.update_clock(0.99) is None
+    assert pipe.update_clock(0.99).requested_time == 1.0
     assert not pipe.has_receive()
     assert pipe.update_clock(1.0) is None
     assert_bottom_events(pipe)
@@ -202,9 +202,9 @@ def test_automatic_pipe_clocked():
     assert pipe.update_clock(0) is None
     write_bottom_chunked_buffers(pipe)
     assert_clock_request_event_received(pipe, 1.0)
-    assert pipe.update_clock(0.5) is None
+    assert pipe.update_clock(0.5).requested_time == 1.0
     assert not pipe.has_receive()
-    assert pipe.update_clock(0.99) is None
+    assert pipe.update_clock(0.99).requested_time == 1.0
     assert not pipe.has_receive()
     assert pipe.update_clock(1.0) is None
     assert_bottom_events(pipe)
